@@ -932,6 +932,18 @@ function showData() {
   $('#st-error').style.display   = 'none';
   $('#st-data').style.display    = '';
 }
+function plural(n, word) { return `${n} ${word}${n === 1 ? '' : 's'}`; }
+
+/** New data loaded: clear old answers so they are never mistaken for answers about the new files. */
+function resetChat(what) {
+  const msg = `Now looking at <b>${esc(what)}</b>. Ask me anything about them, in your own words.<br><br>`
+            + 'I only answer from these files and show where each fact comes from. If the files don’t say, I’ll tell you.';
+  ['#msgs-desk', '#msgs-mobile'].forEach(id => {
+    const c = $(id);
+    if (c) c.innerHTML = `<div class="chat-msg bot">${msg}</div>`;
+  });
+}
+
 function setStatus(text) {
   const el = $('#dataset-status');
   if (el) el.textContent = text;
@@ -965,10 +977,11 @@ async function loadAnalysis(url, opts) {
     if (!r.ok) throw new Error(j.detail ? JSON.stringify(j.detail) : r.statusText);
     DATA = j; DS = j.dataset_id; CUR = 0; HIST = []; _checks = {};
     const fc = Object.keys(j.files || {}).length;
-    setStatus(`${fc} files read · ${j.event_count} events found`);
+    setStatus(`${plural(fc, 'file')} read · ${plural(j.event_count || 0, 'event')} found`);
     $('#dl-report').href = '/api/report.md?dataset=' + encodeURIComponent(DS);
     showData();
     render();
+    resetChat(url.includes('/api/upload') ? `your uploaded files (${plural(fc, 'file')})` : 'the sample files');
   } catch (err) { showError(err.message); }
 }
 
@@ -1048,11 +1061,11 @@ function renderHero() {
     ? 'Good news: we found no problems that need action.'
     : `We found ${n} problem${n === 1 ? '' : 's'}` + (crit ? `, and ${crit} ${crit === 1 ? 'is' : 'are'} critical.` : '.');
   const sub = n === 0
-    ? `We read ${fc} files. Everything suspicious matched approved work.`
-    : `We read ${fc} files from your systems and put the pieces together. Start with the most serious problem below; each one says what happened, what we know for sure, and what to do.`;
+    ? `We read ${plural(fc, 'file')}. Everything suspicious matched approved work.`
+    : `We read ${plural(fc, 'file')} from your systems and put the pieces together. Start with the most serious problem below; each one says what happened, what we know for sure, and what to do.`;
   const pills = [
-    `${fc} files read`,
-    `${DATA.event_count || 0} events checked`,
+    `${plural(fc, 'file')} read`,
+    `${plural(DATA.event_count || 0, 'event')} checked`,
     closed ? `${closed} false alarm${closed === 1 ? '' : 's'} cleared` : null,
     blind ? `${blind} blind spot${blind === 1 ? '' : 's'} noted` : null,
   ].filter(Boolean);
@@ -1625,6 +1638,11 @@ async function submitChat(qId, msgsId) {
       body: JSON.stringify({ question: q, dataset: DS, history: HIST })
     });
     const j = await r.json();
+    if (r.status === 404) {
+      setTyping(false);
+      appendMsg(msgsId, 'bot', '<span class="text-warning"><i class="ti ti-refresh me-1" aria-hidden="true"></i>The server was restarted and no longer has your upload. Please click <b>Upload files</b> and upload them again.</span>');
+      return;
+    }
     if (!r.ok) throw new Error(j.detail ? JSON.stringify(j.detail) : r.statusText);
     setTyping(false);
     appendMsg(msgsId, 'bot', renderAnswer(j));
