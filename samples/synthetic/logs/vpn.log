@@ -1,0 +1,14 @@
+09/11/2026 08:58:12 vpn-gw-01 event=login_success user=a.malik src=192.0.2.14 assigned_ip=10.8.0.11
+09/11/2026 09:30:44 vpn-gw-01 event=login_success user=r.khan src=192.0.2.80 assigned_ip=10.8.0.12
+09/11/2026 17:05:09 vpn-gw-01 event=logout user=a.malik src=192.0.2.14 duration=29217s
+09/11/2026 18:01:50 vpn-gw-01 event=logout user=r.khan src=192.0.2.80 duration=30666s
+10/11/2026 08:55:03 vpn-gw-01 event=login_success user=s.ahmed src=192.0.2.61 assigned_ip=10.8.0.14
+10/11/2026 09:10:02 vpn-gw-01 event=login_failed user=a.malik src=203.0.113.77 reason=bad_password
+10/11/2026 09:10:48 vpn-gw-01 event=login_failed user=a.malik src=203.0.113.77 reason=bad_password
+10/11/2026 09:11:37 vpn-gw-01 event=login_failed user=a.malik src=203.0.113.77 reason=bad_password
+10/11/2026 09:12:30 vpn-gw-01 event=login_failed user=a.malik src=203.0.113.77 reason=bad_password
+10/11/2026 09:13:22 vpn-gw-01 event=login_failed user=a.malik src=203.0.113.77 reason=bad_password
+10/11/2026 09:14:41 vpn-gw-01 event=login_failed user=a.malik src=203.0.113.77 reason=bad_password
+10/11/2026 09:15:40 vpn-gw-01 event=login_failed user=a.malik src=203.0.113.77 reason=bad_password
+10/11/2026 09:16:05 vpn-gw-01 event=login_success user=a.malik src=203.0.113.77 assigned_ip=10.8.0.23
+10/11/2026 10:03:00 vpn-gw-01 event=logout user=a.malik src=203.0.113.77 duration=2815s

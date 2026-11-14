@@ -1,0 +1,11 @@
+asset_tag,hostname,ip_address,type,owner,primary_user,criticality,location
+OL-SRV-0001,web-prod-01,10.0.1.10,Web server (customer portal),IT Operations,,High,DC-1
+OL-SRV-0003,mail-gw-01,10.0.0.25,Email gateway,IT Operations,,High,DC-1
+OL-SRV-0007,db-prod-01,10.0.2.30,Database server (shipments DB),Data Team,,Critical,DC-1
+OL-SRV-0012,fs-prod-02,10.0.2.20,File server (shipping manifests and customer documents),Finance Operations,,Critical,DC-1
+OL-SRV-0020,vpn-gw-01,10.0.0.5,VPN gateway,Network Team,,High,DC-1
+OL-SRV-0031,scan-01,10.0.5.50,Vulnerability scanner,Security Team,,Low,DC-1
+OL-SRV-0040,jump-01,10.0.0.40,Admin jump host,IT Operations,,Medium,DC-1
+OL-LAP-0143,lt-amalik,10.0.8.43,Laptop,Ayesha Malik,a.malik,Medium,Karachi office
+OL-LAP-0098,lt-rkhan,10.0.8.98,Laptop,Rehan Khan,r.khan,Medium,Karachi office
+OL-LAP-0161,lt-sahmed,10.0.8.61,Laptop,Sara Ahmed,s.ahmed,Medium,Lahore office

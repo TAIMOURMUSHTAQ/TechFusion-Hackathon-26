@@ -1,0 +1,8 @@
+severity,notify,role,contact,notify_within,channel,update_frequency
+SEV1,Sana Qureshi,CISO,sana.qureshi@orbitlogistics.example / ext 2001,15 minutes,Phone call then email,Every 30 minutes
+SEV1,Hamza Raza,IT Director,hamza.raza@orbitlogistics.example / ext 2002,15 minutes,Phone call then email,Every 30 minutes
+SEV1,SOC Lead on call,SOC Lead,soc-lead@orbitlogistics.example / ext 2100,Immediately,Phone call,Continuous
+SEV2,SOC Lead on call,SOC Lead,soc-lead@orbitlogistics.example / ext 2100,30 minutes,Phone call,Every hour
+SEV2,Hamza Raza,IT Director,hamza.raza@orbitlogistics.example / ext 2002,1 hour,Email,Every 2 hours
+SEV3,SOC Lead on call,SOC Lead,soc-lead@orbitlogistics.example / ext 2100,4 hours,Ticket and email,Daily
+SEV4,SOC queue,SOC Analyst team,soc@orbitlogistics.example,Next business day,Ticket,On closure

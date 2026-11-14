@@ -1,0 +1,43 @@
+Nov  9 22:05:05 db-prod-01 sshd[4102]: Failed password for r.khan from 10.0.0.40 port 50210 ssh2
+Nov  9 22:05:12 db-prod-01 sshd[4112]: Failed password for r.khan from 10.0.0.40 port 50211 ssh2
+Nov  9 22:05:21 db-prod-01 sshd[4122]: Failed password for r.khan from 10.0.0.40 port 50212 ssh2
+Nov  9 22:05:33 db-prod-01 sshd[4132]: Failed password for r.khan from 10.0.0.40 port 50213 ssh2
+Nov  9 22:05:47 db-prod-01 sshd[4142]: Failed password for r.khan from 10.0.0.40 port 50214 ssh2
+Nov  9 22:07:30 db-prod-01 sshd[4190]: Accepted password for r.khan from 10.0.0.40 port 50233 ssh2
+Nov  9 22:07:31 db-prod-01 sshd[4190]: pam_unix(sshd:session): session opened for user r.khan by (uid=0)
+Nov  9 22:10:02 db-prod-01 sudo: r.khan : TTY=pts/0 ; PWD=/home/r.khan ; USER=root ; COMMAND=/usr/bin/systemctl stop postgresql
+Nov  9 22:41:15 db-prod-01 sudo: r.khan : TTY=pts/0 ; PWD=/home/r.khan ; USER=root ; COMMAND=/usr/bin/pg_upgradecluster 15 main
+Nov  9 23:12:40 db-prod-01 sudo: r.khan : TTY=pts/0 ; PWD=/home/r.khan ; USER=root ; COMMAND=/usr/bin/systemctl start postgresql
+Nov  9 23:20:03 db-prod-01 sshd[4190]: pam_unix(sshd:session): session closed for user r.khan
+Nov 10 05:00:01 db-prod-01 CRON[1180]: (postgres) CMD (/usr/local/bin/pg_health.sh)
+Nov 10 06:00:01 db-prod-01 CRON[1180]: (postgres) CMD (/usr/local/bin/pg_health.sh)
+Nov 10 07:00:01 db-prod-01 CRON[1180]: (postgres) CMD (/usr/local/bin/pg_health.sh)
+Nov 10 08:00:01 db-prod-01 CRON[1180]: (postgres) CMD (/usr/local/bin/pg_health.sh)
+Nov 10 08:30:00 fs-prod-02 CRON[2201]: (root) CMD (/usr/local/bin/heartbeat.sh)
+Nov 10 08:35:00 fs-prod-02 CRON[2201]: (root) CMD (/usr/local/bin/heartbeat.sh)
+Nov 10 08:40:00 fs-prod-02 CRON[2201]: (root) CMD (/usr/local/bin/heartbeat.sh)
+Nov 10 08:45:00 fs-prod-02 CRON[2201]: (root) CMD (/usr/local/bin/heartbeat.sh)
+Nov 10 08:50:00 fs-prod-02 CRON[2201]: (root) CMD (/usr/local/bin/heartbeat.sh)
+Nov 10 08:55:00 fs-prod-02 CRON[2201]: (root) CMD (/usr/local/bin/heartbeat.sh)
+Nov 10 09:00:00 fs-prod-02 CRON[2201]: (root) CMD (/usr/local/bin/heartbeat.sh)
+Nov 10 09:00:01 db-prod-01 CRON[1180]: (postgres) CMD (/usr/local/bin/pg_health.sh)
+Nov 10 09:05:00 fs-prod-02 CRON[2201]: (root) CMD (/usr/local/bin/heartbeat.sh)
+Nov 10 09:10:00 fs-prod-02 CRON[2201]: (root) CMD (/usr/local/bin/heartbeat.sh)
+Nov 10 09:15:00 fs-prod-02 CRON[2201]: (root) CMD (/usr/local/bin/heartbeat.sh)
+Nov 10 09:19:30 fs-prod-02 sshd[9911]: Accepted password for a.malik from 10.8.0.23 port 51122 ssh2
+Nov 10 09:19:31 fs-prod-02 sshd[9911]: pam_unix(sshd:session): session opened for user a.malik by (uid=0)
+Nov 10 09:20:00 fs-prod-02 CRON[2201]: (root) CMD (/usr/local/bin/heartbeat.sh)
+Nov 10 09:22:05 db-prod-01 sshd[7700]: Failed password for a.malik from 10.8.0.23 port 51400 ssh2
+Nov 10 09:22:11 db-prod-01 sshd[7710]: Failed password for a.malik from 10.8.0.23 port 51401 ssh2
+Nov 10 09:22:19 db-prod-01 sshd[7720]: Failed password for a.malik from 10.8.0.23 port 51402 ssh2
+Nov 10 09:54:40 fs-prod-02 rsyslogd: [origin software="rsyslogd" swVersion="8.2102.0"] start
+Nov 10 09:55:00 fs-prod-02 CRON[2201]: (root) CMD (/usr/local/bin/heartbeat.sh)
+Nov 10 10:00:00 fs-prod-02 CRON[2201]: (root) CMD (/usr/local/bin/heartbeat.sh)
+Nov 10 10:00:01 db-prod-01 CRON[1180]: (postgres) CMD (/usr/local/bin/pg_health.sh)
+Nov 10 10:02:10 fs-prod-02 sshd[9911]: pam_unix(sshd:session): session closed for user a.malik
+Nov 10 10:05:00 fs-prod-02 CRON[2201]: (root) CMD (/usr/local/bin/heartbeat.sh)
+Nov 10 10:10:00 fs-prod-02 CRON[2201]: (root) CMD (/usr/local/bin/heartbeat.sh)
+Nov 10 10:15:00 fs-prod-02 CRON[2201]: (root) CMD (/usr/local/bin/heartbeat.sh)
+Nov 10 10:20:00 fs-prod-02 CRON[2201]: (root) CMD (/usr/local/bin/heartbeat.sh)
+Nov 10 10:25:00 fs-prod-02 CRON[2201]: (root) CMD (/usr/local/bin/heartbeat.sh)
+Nov 10 10:30:00 fs-prod-02 CRON[2201]: (root) CMD (/usr/local/bin/heartbeat.sh)

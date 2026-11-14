@@ -1,0 +1,1410 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Orbit Triage — Security Incident Triage</title>
+  <meta name="description" content="Security incident triage dashboard — every fact cites file:line">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta21/dist/css/tabler.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+  <style>
+    /* ═══════════════════════════════════════════════════════════
+       ORBIT TRIAGE — Custom styles (Tabler overrides + additions)
+       ═══════════════════════════════════════════════════════════ */
+
+    /* ── Custom properties ── */
+    :root {
+      --sev-p1: #e53e3e;
+      --sev-p2: #dd6b20;
+      --sev-p3: #c8930a;
+      --sev-p4: #2d8a4e;
+      --sev-none: #64748b;
+      --ev-confirmed: #38a169;
+      --ev-suspected: #c8930a;
+      --ev-nee: #7c3aed;
+      --accent: #3b82f6;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    [data-bs-theme="light"] {
+      --ev-nee: #6d28d9;
+      --accent: #2563eb;
+    }
+
+    /* ── Layout ── */
+    .orbit-layout {
+      display: flex;
+      min-height: calc(100vh - 56px);
+    }
+    .orbit-main {
+      flex: 1 1 0;
+      min-width: 0;
+      overflow-y: auto;
+    }
+    .orbit-chat {
+      width: 380px;
+      flex-shrink: 0;
+      border-left: 1px solid var(--tblr-border-color);
+      display: flex;
+      flex-direction: column;
+      position: sticky;
+      top: 56px;
+      height: calc(100vh - 56px);
+      overflow: hidden;
+      background: var(--tblr-card-bg);
+    }
+
+    /* ── Severity badges ── */
+    .sev-p1 { background: var(--sev-p1) !important; color: #fff !important; }
+    .sev-p2 { background: var(--sev-p2) !important; color: #fff !important; }
+    .sev-p3 { background: var(--sev-p3) !important; color: #fff !important; }
+    .sev-p4 { background: var(--sev-p4) !important; color: #fff !important; }
+    .sev-none { background: var(--sev-none) !important; color: #fff !important; }
+    /* Tabler leaves bg-* badge text dark unless text-*-fg is added; make counts readable */
+    .badge.bg-secondary, .badge.bg-success, .badge.bg-primary, .badge.bg-danger { color: #fff !important; }
+
+    /* ── Incident cards ── */
+    .inc-card {
+      cursor: pointer;
+      border-left: 4px solid transparent !important;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .inc-card:hover  { border-left-color: var(--accent) !important; }
+    .inc-card:focus  { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .inc-card.active { border-left-color: var(--accent) !important; box-shadow: 0 0 0 1px var(--accent); }
+    .inc-title       { font-size: 13px; font-weight: 600; }
+
+    /* ── Evidence columns ── */
+    .ev-confirmed h6 { color: var(--ev-confirmed); }
+    .ev-suspected  h6 { color: var(--ev-suspected); }
+    .ev-nee        h6 { color: var(--ev-nee); }
+
+    /* ── Condition pills ── */
+    .cond-pill {
+      display: inline-block;
+      font-size: 10.5px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .cond-met   { background: rgba(56,161,105,.15); color: var(--ev-confirmed); border: 1px solid var(--ev-confirmed); }
+    .cond-check { background: rgba(200,147,10,.15);  color: var(--ev-suspected); border: 1px solid var(--ev-suspected); }
+    .cond-not   { background: rgba(100,116,139,.15); color: var(--sev-none);     border: 1px solid var(--sev-none); }
+
+    /* ── Citation chips ── */
+    .cite-chip {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 10.5px;
+      padding: 1px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      background: transparent;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background .12s;
+    }
+    .cite-chip:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+
+    /* ── KPI cards ── */
+    .kpi-num {
+      font-size: 2rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.1;
+    }
+
+    /* ── Chat ── */
+    .chat-msgs {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+    }
+    .chat-msg {
+      margin-bottom: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      word-break: break-word;
+      font-size: 13.5px;
+      line-height: 1.55;
+    }
+    .chat-msg.user { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+    .chat-msg.bot  { background: var(--tblr-bg-surface); border: 1px solid var(--tblr-border-color); }
+    .msg-meta      { color: var(--tblr-muted); font-size: 11px; margin-top: 6px; }
+    .msg-flag      { color: var(--ev-suspected); font-size: 12px; margin-top: 4px; }
+
+    .chat-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 12px 10px; }
+    .chat-chip {
+      font-size: 11.5px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--tblr-border-color);
+      background: var(--tblr-bg-surface);
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 240px;
+      transition: border-color .12s;
+    }
+    .chat-chip:hover { border-color: var(--accent); }
+
+    .chat-typing {
+      display: none;
+      padding: 4px 14px 10px;
+      color: var(--tblr-muted);
+      font-size: 12.5px;
+    }
+
+    /* ── Timeline chart ── */
+    #tlchart { width: 100%; height: 300px; }
+
+    /* ── Tables always scroll on mobile ── */
+    .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+    /* ── Tabs mobile: horizontal scroll ── */
+    @media (max-width: 767px) {
+      .nav-tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+      }
+      .nav-tabs::-webkit-scrollbar { display: none; }
+      .nav-tabs .nav-link { white-space: nowrap; min-height: 44px; }
+      #tlchart { height: 220px; }
+      .kpi-row > * { flex: 0 0 50%; max-width: 50%; }
+    }
+
+    /* ── Touch targets ── */
+    @media (max-width: 767px) {
+      .btn, .nav-link, button, [role="button"] { min-height: 44px; }
+      .inc-card .card-body { padding: 12px; }
+    }
+
+    /* ── FAB chat button ── */
+    #fab-chat {
+      display: none;
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 1045;
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      font-size: 22px;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 18px rgba(0,0,0,.35);
+      cursor: pointer;
+    }
+    #fab-chat:hover { opacity: .9; }
+
+    /* ── Responsive breakpoints ── */
+    @media (max-width: 1199px) {
+      .orbit-chat { display: none !important; }
+      #fab-chat   { display: flex; }
+    }
+
+    /* ── Focus rings ── */
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    /* ── Reduced motion ── */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .01ms !important;
+        transition-duration: .01ms !important;
+      }
+    }
+
+    /* ── Navbar brand ── */
+    .navbar-brand-logo { font-size: 18px; font-weight: 700; letter-spacing: -.01em; }
+    .nav-status { font-size: 12px; }
+
+    /* ── Skeleton ── */
+    .skel-h { min-height: 88px; }
+
+    /* ── Accordion tweaks ── */
+    .accordion-button { font-size: 14px; }
+    .accordion-button:not(.collapsed) { font-weight: 600; }
+
+    /* ── Minimal scrollbar ── */
+    .chat-msgs::-webkit-scrollbar { width: 4px; }
+    .chat-msgs::-webkit-scrollbar-thumb { background: var(--tblr-border-color); border-radius: 4px; }
+
+    /* ── Missing source items ── */
+    .missing-item { border-left: 3px solid var(--ev-suspected); padding-left: 10px; }
+  </style>
+</head>
+
+<body>
+<!-- ═══ NAVBAR ═══════════════════════════════════════════════════════════ -->
+<header class="navbar navbar-expand-md d-print-none" role="banner">
+  <div class="container-xl">
+    <a class="navbar-brand d-flex align-items-center gap-2" href="/">
+      <i class="ti ti-shield-lock fs-4 text-primary" aria-hidden="true"></i>
+      <span class="navbar-brand-logo">Orbit Triage</span>
+    </a>
+    <span class="nav-status text-muted ms-2 d-none d-sm-block" id="dataset-status" aria-live="polite"></span>
+
+    <div class="ms-auto d-flex align-items-center gap-2 flex-wrap">
+      <span id="llm-status" class="d-none d-sm-block"></span>
+
+      <button class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" id="btn-sample"
+              aria-label="Load bundled dataset">
+        <i class="ti ti-database" aria-hidden="true"></i>
+        <span class="d-none d-md-inline">Bundled dataset</span>
+      </button>
+
+      <label class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1 mb-0"
+             aria-label="Upload .zip or multiple files">
+        <i class="ti ti-upload" aria-hidden="true"></i>
+        <span class="d-none d-md-inline">Upload</span>
+        <input type="file" id="file-upload" multiple hidden accept=".zip,.md,.csv,.log,.txt,.json,.xlsx">
+      </label>
+
+      <a class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+         id="dl-report" href="/api/report.md" download="incident_report.md"
+         aria-label="Download incident report as Markdown">
+        <i class="ti ti-download" aria-hidden="true"></i>
+        <span class="d-none d-md-inline">Report</span>
+      </a>
+
+      <!-- Mobile chat button -->
+      <button class="btn btn-sm btn-outline-primary d-xl-none d-flex align-items-center gap-1"
+              data-bs-toggle="offcanvas" data-bs-target="#chat-offcanvas"
+              aria-label="Open chat panel" aria-controls="chat-offcanvas">
+        <i class="ti ti-message-circle" aria-hidden="true"></i>
+        <span class="d-none d-sm-inline">Ask</span>
+      </button>
+
+      <button class="btn btn-sm btn-ghost-secondary d-flex align-items-center" id="btn-theme"
+              aria-label="Switch to light theme">
+        <i class="ti ti-sun" aria-hidden="true"></i>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ═══ TOAST ══════════════════════════════════════════════════════════════ -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index:9999"
+     aria-live="polite" aria-atomic="true">
+  <div id="copy-toast" class="toast align-items-center border-0" role="status">
+    <div class="d-flex">
+      <div class="toast-body d-flex align-items-center gap-2">
+        <i class="ti ti-clipboard-check text-success" aria-hidden="true"></i>
+        <span id="toast-text">Copied</span>
+      </div>
+      <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Dismiss"></button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MOBILE CHAT OFFCANVAS ══════════════════════════════════════════════ -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="chat-offcanvas"
+     aria-labelledby="chat-oc-label" style="width:min(100vw,420px)">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="chat-oc-label">
+      <i class="ti ti-message-circle me-2 text-primary" aria-hidden="true"></i>Ask the analyst
+    </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body p-0 d-flex flex-column" style="overflow:hidden">
+    <div class="chat-msgs" id="msgs-mobile" role="log" aria-live="polite" aria-label="Chat messages">
+      <div class="chat-msg bot">Ask about the incident. I answer only from the files and cite every fact. If the logs do not show something, I say "Not enough evidence in the logs".</div>
+    </div>
+    <div class="chat-chips" id="chips-mobile" role="list" aria-label="Suggested questions"></div>
+    <div class="chat-typing" id="typing-mobile">
+      <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Thinking…
+    </div>
+    <form class="p-2 border-top d-flex gap-2" id="form-mobile" autocomplete="off" novalidate>
+      <label class="visually-hidden" for="q-mobile">Your question</label>
+      <input class="form-control form-control-sm" id="q-mobile"
+             placeholder="e.g. Was data stolen?" autocomplete="off">
+      <button class="btn btn-sm btn-primary px-3" type="submit">Ask</button>
+    </form>
+  </div>
+</div>
+
+<!-- ═══ FAB chat button ═══════════════════════════════════════════════════ -->
+<button id="fab-chat" aria-label="Open chat panel"
+        data-bs-toggle="offcanvas" data-bs-target="#chat-offcanvas">
+  <i class="ti ti-message-circle" aria-hidden="true"></i>
+</button>
+
+<!-- ═══ MAIN LAYOUT ════════════════════════════════════════════════════════ -->
+<div class="orbit-layout">
+
+  <!-- ── MAIN CONTENT AREA ── -->
+  <main class="orbit-main" id="main-content" role="main">
+    <div class="container-xl py-3 px-3 px-md-4">
+
+      <!-- Skeleton loaders (shown while loading) -->
+      <div id="st-skeleton">
+        <div class="row g-3 mb-3" aria-hidden="true">
+          <div class="col-6 col-md-3"><div class="card skel-h placeholder-glow"><div class="card-body"><span class="placeholder col-8 mb-2 d-block"></span><span class="placeholder col-4 placeholder-lg d-block"></span></div></div></div>
+          <div class="col-6 col-md-3"><div class="card skel-h placeholder-glow"><div class="card-body"><span class="placeholder col-6 mb-2 d-block"></span><span class="placeholder col-5 placeholder-lg d-block"></span></div></div></div>
+          <div class="col-6 col-md-3"><div class="card skel-h placeholder-glow"><div class="card-body"><span class="placeholder col-7 mb-2 d-block"></span><span class="placeholder col-3 placeholder-lg d-block"></span></div></div></div>
+          <div class="col-6 col-md-3"><div class="card skel-h placeholder-glow"><div class="card-body"><span class="placeholder col-5 mb-2 d-block"></span><span class="placeholder col-4 placeholder-lg d-block"></span></div></div></div>
+        </div>
+        <div class="row g-3" aria-hidden="true">
+          <div class="col-12 col-md-6"><div class="card placeholder-glow" style="min-height:76px"><div class="card-body"><span class="placeholder col-12 mb-2 d-block"></span><span class="placeholder col-7 d-block"></span></div></div></div>
+          <div class="col-12 col-md-6"><div class="card placeholder-glow" style="min-height:76px"><div class="card-body"><span class="placeholder col-10 mb-2 d-block"></span><span class="placeholder col-5 d-block"></span></div></div></div>
+        </div>
+      </div>
+
+      <!-- Error state -->
+      <div id="st-error" style="display:none" role="alert">
+        <div class="card border-danger">
+          <div class="card-body">
+            <div class="d-flex align-items-start gap-3">
+              <i class="ti ti-alert-triangle text-danger fs-2" aria-hidden="true"></i>
+              <div class="flex-grow-1">
+                <h4 class="mb-1">Analysis failed</h4>
+                <p class="text-muted mb-3" id="err-msg"></p>
+                <button class="btn btn-danger btn-sm" id="btn-retry">
+                  <i class="ti ti-refresh me-1" aria-hidden="true"></i>Retry
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DATA STATE (shown when analysis loaded) -->
+      <div id="st-data" style="display:none">
+
+        <!-- ── KPI Row ── -->
+        <div class="row g-2 mb-3 kpi-row" id="kpi-row" role="region" aria-label="Summary statistics"></div>
+
+        <!-- ── Incident cards ── -->
+        <section aria-label="Incidents" class="mb-3">
+          <h2 class="h6 text-muted text-uppercase mb-2" style="font-size:11px;letter-spacing:.08em">
+            <i class="ti ti-list me-1" aria-hidden="true"></i>Incidents
+          </h2>
+          <div class="row g-3" id="inc-cards" role="list"></div>
+        </section>
+
+        <!-- ── Incident detail ── -->
+        <section aria-label="Incident detail" id="inc-detail" class="mb-3" style="display:none">
+          <div class="card">
+            <div class="card-header d-flex align-items-center gap-2 flex-wrap py-2">
+              <span id="hdr-sev"></span>
+              <strong id="hdr-id" class="font-monospace"></strong>
+              <span id="hdr-title" class="text-muted" style="font-size:13.5px"></span>
+              <small class="ms-auto text-muted font-monospace" id="hdr-time"></small>
+            </div>
+            <div class="card-body p-0">
+              <!-- Tabs -->
+              <ul class="nav nav-tabs px-3 pt-2" id="inc-tabs" role="tablist" aria-label="Incident detail tabs">
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link active" id="tab-ov-btn" data-bs-toggle="tab"
+                          data-bs-target="#tab-ov" type="button" role="tab" aria-selected="true">Overview</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="tab-tl-btn" data-bs-toggle="tab"
+                          data-bs-target="#tab-tl" type="button" role="tab" aria-selected="false">Timeline</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="tab-ev-btn" data-bs-toggle="tab"
+                          data-bs-target="#tab-ev" type="button" role="tab" aria-selected="false">Evidence</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="tab-sev-btn" data-bs-toggle="tab"
+                          data-bs-target="#tab-sev" type="button" role="tab" aria-selected="false">Severity</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="tab-act-btn" data-bs-toggle="tab"
+                          data-bs-target="#tab-act" type="button" role="tab" aria-selected="false">Actions</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="tab-ppl-btn" data-bs-toggle="tab"
+                          data-bs-target="#tab-ppl" type="button" role="tab" aria-selected="false">People</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="tab-match-btn" data-bs-toggle="tab"
+                          data-bs-target="#tab-match" type="button" role="tab" aria-selected="false">Matching</button>
+                </li>
+              </ul>
+
+              <!-- Tab content -->
+              <div class="tab-content p-3" id="inc-tab-content">
+                <div class="tab-pane fade show active" id="tab-ov" role="tabpanel" aria-labelledby="tab-ov-btn"></div>
+                <div class="tab-pane fade" id="tab-tl" role="tabpanel" aria-labelledby="tab-tl-btn">
+                  <div id="tlchart" aria-label="Incident timeline chart"></div>
+                  <div class="table-scroll mt-3">
+                    <table class="table table-sm table-hover" id="tl-table">
+                      <thead><tr>
+                        <th style="width:2rem">#</th>
+                        <th>UTC</th>
+                        <th>Local</th>
+                        <th>As logged</th>
+                        <th>Source</th>
+                        <th>Event</th>
+                      </tr></thead>
+                      <tbody></tbody>
+                    </table>
+                  </div>
+                </div>
+                <div class="tab-pane fade" id="tab-ev" role="tabpanel" aria-labelledby="tab-ev-btn"></div>
+                <div class="tab-pane fade" id="tab-sev" role="tabpanel" aria-labelledby="tab-sev-btn"></div>
+                <div class="tab-pane fade" id="tab-act" role="tabpanel" aria-labelledby="tab-act-btn"></div>
+                <div class="tab-pane fade" id="tab-ppl" role="tabpanel" aria-labelledby="tab-ppl-btn"></div>
+                <div class="tab-pane fade" id="tab-match" role="tabpanel" aria-labelledby="tab-match-btn"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── Bottom collapsibles ── -->
+        <div class="accordion" id="bottom-acc">
+
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button"
+                      data-bs-toggle="collapse" data-bs-target="#acc-alerts"
+                      aria-expanded="false" aria-controls="acc-alerts">
+                <i class="ti ti-bell me-2 text-muted" aria-hidden="true"></i>
+                Every IDS alert and where it went
+                <span class="badge bg-secondary ms-2" id="cnt-alerts"></span>
+              </button>
+            </h2>
+            <div id="acc-alerts" class="accordion-collapse collapse" data-bs-parent="#bottom-acc">
+              <div class="accordion-body p-0">
+                <div class="table-scroll">
+                  <table class="table table-sm mb-0" id="tbl-alerts">
+                    <thead><tr><th>Alert ID</th><th>Raised (UTC)</th><th>Description</th><th>Outcome</th></tr></thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button"
+                      data-bs-toggle="collapse" data-bs-target="#acc-closed"
+                      aria-expanded="false" aria-controls="acc-closed">
+                <i class="ti ti-circle-check me-2 text-success" aria-hidden="true"></i>
+                Closed as harmless (with change ID)
+                <span class="badge bg-success ms-2" id="cnt-closed"></span>
+              </button>
+            </h2>
+            <div id="acc-closed" class="accordion-collapse collapse" data-bs-parent="#bottom-acc">
+              <div class="accordion-body" id="body-closed"></div>
+            </div>
+          </div>
+
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button"
+                      data-bs-toggle="collapse" data-bs-target="#acc-missing"
+                      aria-expanded="false" aria-controls="acc-missing">
+                <i class="ti ti-file-x me-2 text-warning" aria-hidden="true"></i>
+                Missing log sources
+                <span class="badge bg-warning text-dark ms-2" id="cnt-missing"></span>
+              </button>
+            </h2>
+            <div id="acc-missing" class="accordion-collapse collapse" data-bs-parent="#bottom-acc">
+              <div class="accordion-body" id="body-missing"></div>
+            </div>
+          </div>
+
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button"
+                      data-bs-toggle="collapse" data-bs-target="#acc-files"
+                      aria-expanded="false" aria-controls="acc-files">
+                <i class="ti ti-clock me-2 text-muted" aria-hidden="true"></i>
+                How timestamps were read
+              </button>
+            </h2>
+            <div id="acc-files" class="accordion-collapse collapse" data-bs-parent="#bottom-acc">
+              <div class="accordion-body p-0">
+                <div class="table-scroll">
+                  <table class="table table-sm mb-0" id="tbl-files">
+                    <thead><tr><th>File</th><th>Kind</th><th>Timezone</th><th>Events</th><th>Logged at</th><th>Notes</th></tr></thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button"
+                      data-bs-toggle="collapse" data-bs-target="#acc-notes"
+                      aria-expanded="false" aria-controls="acc-notes">
+                <i class="ti ti-notes me-2 text-muted" aria-hidden="true"></i>
+                Analyst notes
+                <span class="badge bg-secondary ms-2" id="cnt-notes"></span>
+              </button>
+            </h2>
+            <div id="acc-notes" class="accordion-collapse collapse" data-bs-parent="#bottom-acc">
+              <div class="accordion-body" id="body-notes"></div>
+            </div>
+          </div>
+
+        </div><!-- /accordion -->
+      </div><!-- /st-data -->
+    </div><!-- /container -->
+  </main>
+
+  <!-- ── DESKTOP CHAT SIDEBAR ── -->
+  <aside class="orbit-chat" aria-label="Analyst chat" role="complementary">
+    <div class="border-bottom p-3 d-flex align-items-center gap-2">
+      <i class="ti ti-message-circle text-primary" aria-hidden="true"></i>
+      <h2 class="h6 mb-0">Ask the analyst</h2>
+      <span class="ms-auto text-muted small">cite-verified</span>
+    </div>
+    <div class="chat-msgs" id="msgs-desk" role="log" aria-live="polite" aria-label="Chat messages">
+      <div class="chat-msg bot">Ask about the incident. I answer only from the files and cite every fact.<br><br>If the logs do not show something, I say "Not enough evidence in the logs".</div>
+    </div>
+    <div class="chat-chips" id="chips-desk" role="list" aria-label="Suggested questions"></div>
+    <div class="chat-typing" id="typing-desk" aria-live="polite">
+      <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Thinking…
+    </div>
+    <form class="p-2 border-top d-flex gap-2" id="form-desk" autocomplete="off" novalidate>
+      <label class="visually-hidden" for="q-desk">Your question</label>
+      <input class="form-control form-control-sm" id="q-desk"
+             placeholder="e.g. Who clicked the phishing link?" autocomplete="off">
+      <button class="btn btn-sm btn-primary d-flex align-items-center gap-1" type="submit">
+        <i class="ti ti-send" aria-hidden="true"></i>
+        <span class="visually-hidden">Ask</span>
+      </button>
+    </form>
+  </aside>
+
+</div><!-- /orbit-layout -->
+
+<!-- ═══ SCRIPTS ════════════════════════════════════════════════════════════ -->
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta21/dist/js/tabler.min.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   ORBIT TRIAGE — Application script
+   ─────────────────────────────────────────────────────────────────────────
+   XSS safety: esc() is called on every piece of API-sourced text before it
+   enters innerHTML. md() calls esc() first, then converts **bold** / `code`.
+   No inline event handlers are built from API data.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+// ── Utilities ─────────────────────────────────────────────────────────────
+const $  = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+
+/** Escape ALL special HTML chars. Must be called on any API string before innerHTML. */
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/** Convert **bold** and `code` AFTER escaping (never before). */
+function md(s) {
+  return esc(s)
+    .replace(/\*\*(.+?)\*\*/gs, '<strong>$1</strong>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>');
+}
+
+/** Citation chips — clicking copies to clipboard and shows toast. */
+function citesHtml(arr) {
+  if (!arr || !arr.length) return '';
+  return arr.filter(Boolean).map(c =>
+    `<button type="button" class="cite-chip ms-1" data-cite="${esc(c)}">${esc(c)}</button>`
+  ).join('');
+}
+
+/** Severity badge <span>. */
+function sevBadge(s) {
+  const cls = {P1:'sev-p1',P2:'sev-p2',P3:'sev-p3',P4:'sev-p4'}[s] || 'sev-none';
+  return `<span class="badge ${cls}">${esc(s || 'undecided')}</span>`;
+}
+
+/** Condition pill — green/amber/grey. */
+function condPill(cond, detail) {
+  if (!cond) return '';
+  const isMet   = cond.startsWith('met');
+  const isNot   = cond.startsWith('not');
+  const cls     = isMet ? 'cond-met' : isNot ? 'cond-not' : 'cond-check';
+  const label   = isMet ? 'Met' : isNot ? 'Not met' : 'Check';
+  const tip     = detail ? ` title="${esc(detail)}"` : '';
+  const full    = detail ? `${label}: ${esc(detail)}` : label;
+  return `<span class="cond-pill ${cls}"${tip}>${full}</span>`;
+}
+
+/** Render a list of {text, cites[]} claims. */
+function claimsList(arr) {
+  if (!arr || !arr.length) return '<span class="text-muted small">None</span>';
+  return `<ul class="list-unstyled mb-0">${arr.map(c =>
+    `<li class="mb-2 small">${md(c.text)}${citesHtml(c.cites)}</li>`
+  ).join('')}</ul>`;
+}
+
+// ── State ─────────────────────────────────────────────────────────────────
+let DATA = null, DS = 'default', CUR = 0, HIST = [];
+let _checks = {};   // `${ai}-${si}` -> bool  (analyst step checkboxes)
+let _tlChart = null;
+const SUGGESTED_QS = [
+  'Was finance data stolen from SRV-FS01?',
+  'Why was ALT-9006 not escalated?',
+  'Who clicked the phishing link?',
+  'What is missing from the internal firewall log?',
+  'Who must be informed for the P1 incident and how fast?',
+  "Was utariq's account misused?"
+];
+
+// ── Theme ─────────────────────────────────────────────────────────────────
+function initTheme() {
+  try {
+    const t = localStorage.getItem('orbit-theme') || 'dark';
+    document.documentElement.setAttribute('data-bs-theme', t);
+    _syncThemeIcon(t);
+  } catch (_) {}
+}
+
+function toggleTheme() {
+  try {
+    const cur  = document.documentElement.getAttribute('data-bs-theme') || 'dark';
+    const next = cur === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-bs-theme', next);
+    localStorage.setItem('orbit-theme', next);
+    _syncThemeIcon(next);
+    if (_tlChart) _tlChart.setOption({ backgroundColor: 'transparent' });
+  } catch (_) {}
+}
+
+function _syncThemeIcon(t) {
+  const btn = $('#btn-theme');
+  if (!btn) return;
+  btn.innerHTML = t === 'dark'
+    ? '<i class="ti ti-sun" aria-hidden="true"></i>'
+    : '<i class="ti ti-moon" aria-hidden="true"></i>';
+  btn.setAttribute('aria-label', t === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+}
+
+$('#btn-theme').addEventListener('click', toggleTheme);
+
+// ── Loading states ────────────────────────────────────────────────────────
+function showSkeleton() {
+  $('#st-skeleton').style.display = '';
+  $('#st-error').style.display   = 'none';
+  $('#st-data').style.display    = 'none';
+}
+function showError(msg) {
+  $('#st-skeleton').style.display = 'none';
+  $('#st-error').style.display   = '';
+  $('#st-data').style.display    = 'none';
+  $('#err-msg').textContent = msg;
+}
+function showData() {
+  $('#st-skeleton').style.display = 'none';
+  $('#st-error').style.display   = 'none';
+  $('#st-data').style.display    = '';
+}
+function setStatus(text) {
+  const el = $('#dataset-status');
+  if (el) el.textContent = text;
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────
+function toast(msg) {
+  const el = $('#copy-toast');
+  if (!el) return;
+  $('#toast-text').textContent = msg;
+  bootstrap.Toast.getOrCreateInstance(el, { delay: 2200 }).show();
+}
+
+// ── Citation chip click (delegated, never built from API data) ────────────
+document.addEventListener('click', e => {
+  const chip = e.target.closest('.cite-chip');
+  if (!chip) return;
+  const text = chip.dataset.cite || chip.textContent;
+  navigator.clipboard.writeText(text)
+    .then(() => toast('Copied: ' + text))
+    .catch(() => toast(text));
+});
+
+// ── API: analyse / upload ─────────────────────────────────────────────────
+async function loadAnalysis(url, opts) {
+  showSkeleton();
+  setStatus('Analysing…');
+  try {
+    const r = await fetch(url, opts);
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.detail ? JSON.stringify(j.detail) : r.statusText);
+    DATA = j; DS = j.dataset_id; CUR = 0; HIST = []; _checks = {};
+    const fc = Object.keys(j.files || {}).length;
+    setStatus(`${fc} files · ${j.event_count} events`);
+    $('#dl-report').href = '/api/report.md?dataset=' + encodeURIComponent(DS);
+    showData();
+    render();
+  } catch (err) { showError(err.message); }
+}
+
+async function loadHealth() {
+  try {
+    const r = await fetch('/api/health');
+    const j = await r.json();
+    const el = $('#llm-status');
+    if (!el) return;
+    if (Array.isArray(j.llm) && j.llm.length) {
+      el.innerHTML = `<span class="badge bg-success" title="LLM active">${esc(j.llm[0])}</span>`;
+    } else {
+      el.innerHTML = '<span class="badge bg-secondary" title="No LLM key; facts only">Deterministic mode</span>';
+    }
+  } catch (_) {
+    const el = $('#llm-status');
+    if (el) el.innerHTML = '<span class="badge bg-danger">LLM offline</span>';
+  }
+}
+
+// ── Main render ───────────────────────────────────────────────────────────
+function render() {
+  if (!DATA) return;
+  renderKpis();
+  renderIncidentList();
+  selectIncident(CUR, false);
+  renderAlerts();
+  renderClosed();
+  renderMissing();
+  renderFiles();
+  renderNotes();
+  renderChips();
+}
+
+// ── KPI row ───────────────────────────────────────────────────────────────
+function renderKpis() {
+  const inc = DATA.incidents || [];
+  const counts = { P1:0, P2:0, P3:0, P4:0 };
+  inc.forEach(i => { if (counts[i.severity] !== undefined) counts[i.severity]++; });
+
+  const defs = [
+    { label:'P1 Critical',  val:counts.P1,                     cls:'sev-p1',              icon:'ti-alert-octagon' },
+    { label:'P2 High',      val:counts.P2,                     cls:'sev-p2',              icon:'ti-alert-triangle' },
+    { label:'P3 Medium',    val:counts.P3,                     cls:'sev-p3',              icon:'ti-alert-circle' },
+    { label:'P4 Low',       val:counts.P4,                     cls:'sev-p4',              icon:'ti-info-circle' },
+    { label:'IDS Alerts',   val:(DATA.alerts||[]).length,       cls:'bg-secondary',        icon:'ti-bell' },
+    { label:'Closed',       val:(DATA.closed_as_harmless||[]).length, cls:'bg-success',   icon:'ti-circle-check' },
+    { label:'Missing srcs', val:(DATA.missing_data||[]).length, cls:'bg-warning text-dark',icon:'ti-file-x' },
+  ];
+
+  $('#kpi-row').innerHTML = defs.map(d => `
+    <div class="col-6 col-sm-4 col-xl">
+      <div class="card h-100">
+        <div class="card-body py-3">
+          <div class="d-flex align-items-center justify-content-between mb-1">
+            <span class="text-muted small">${esc(d.label)}</span>
+            <i class="ti ${d.icon} text-muted" aria-hidden="true"></i>
+          </div>
+          <div class="kpi-num">${d.val}</div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── Incident cards ────────────────────────────────────────────────────────
+function renderIncidentList() {
+  const inc = DATA.incidents || [];
+  if (!inc.length) {
+    $('#inc-cards').innerHTML = '<div class="col"><div class="card"><div class="card-body text-muted">No incidents outside approved changes.</div></div></div>';
+    return;
+  }
+  $('#inc-cards').innerHTML = inc.map((i, n) => `
+    <div class="col-12 col-sm-6 col-xl-3" role="listitem">
+      <div class="card inc-card ${n === CUR ? 'active' : ''}"
+           role="button" tabindex="0" data-inc="${n}"
+           aria-label="${esc(i.id)}: ${esc(i.severity||'undecided')} — ${esc(i.title)}"
+           aria-pressed="${n === CUR ? 'true' : 'false'}">
+        <div class="card-body">
+          <div class="d-flex align-items-center gap-2 mb-1">
+            ${sevBadge(i.severity)}
+            <code class="text-muted small">${esc(i.id)}</code>
+          </div>
+          <div class="inc-title mb-1">${esc(i.title)}</div>
+          <div class="text-muted font-monospace" style="font-size:11px">
+            ${esc(i.start_utc ? i.start_utc.slice(0,16) : '')} –
+            ${esc(i.end_utc   ? i.end_utc.slice(11,16)  : '')} UTC
+          </div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+
+  $$('.inc-card').forEach(card => {
+    const go = () => {
+      CUR = parseInt(card.dataset.inc, 10);
+      selectIncident(CUR, true);
+    };
+    card.addEventListener('click', go);
+    card.addEventListener('keydown', e => { if (e.key==='Enter'||e.key===' ') { e.preventDefault(); go(); } });
+  });
+}
+
+// ── Select incident (render detail) ──────────────────────────────────────
+function selectIncident(n, resetTab = true) {
+  CUR = n;
+  $$('.inc-card').forEach((c, i) => {
+    c.classList.toggle('active', i === n);
+    c.setAttribute('aria-pressed', i === n ? 'true' : 'false');
+  });
+
+  const inc = (DATA.incidents || [])[n];
+  if (!inc) { $('#inc-detail').style.display = 'none'; return; }
+  $('#inc-detail').style.display = '';
+
+  // Header
+  $('#hdr-sev').innerHTML = sevBadge(inc.severity);
+  $('#hdr-id').textContent = inc.id;
+  $('#hdr-title').textContent = inc.title;
+  $('#hdr-time').textContent =
+    `${inc.start_utc ? inc.start_utc.slice(0,16) : ''} – ${inc.end_utc ? inc.end_utc.slice(11,16) : ''} UTC`;
+
+  // Reset to overview tab if switching incidents
+  if (resetTab) {
+    $$('#inc-tabs .nav-link').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected','false'); });
+    $$('.tab-pane').forEach(p => p.classList.remove('show','active'));
+    $('#tab-ov-btn').classList.add('active'); $('#tab-ov-btn').setAttribute('aria-selected','true');
+    $('#tab-ov').classList.add('show','active');
+  }
+
+  renderOverviewTab(inc);
+  renderEvidenceTab(inc);
+  renderSeverityTab(inc);
+  renderActionsTab(inc);
+  renderPeopleTab(inc);
+  renderMatchingTab(inc);
+
+  // Timeline is rendered lazily when its tab is clicked
+  if (!resetTab) renderTimelineTab(inc);
+}
+
+// Timeline tab: render on first show
+$('#tab-tl-btn').addEventListener('shown.bs.tab', () => {
+  const inc = (DATA?.incidents || [])[CUR];
+  if (inc) renderTimelineTab(inc);
+});
+
+// ── Tab: Overview ─────────────────────────────────────────────────────────
+function renderOverviewTab(inc) {
+  const users  = [...new Set((inc.findings||[]).flatMap(f => f.users||[]))].filter(Boolean);
+  const srcIps = [...new Set((inc.findings||[]).flatMap(f => f.source_ips||[]))].filter(Boolean);
+
+  // Unique assets
+  const seen = new Set(); const assets = [];
+  (inc.findings||[]).forEach(f =>
+    (f.assets||[]).forEach(a => { if (!seen.has(a)) { seen.add(a); assets.push({ label:a, fid:f.id, type:f.type }); } })
+  );
+
+  $('#tab-ov').innerHTML = `
+    <div class="row g-3 mb-3">
+      <div class="col-md-6">
+        <h6 class="text-muted text-uppercase mb-2" style="font-size:11px;letter-spacing:.06em">
+          <i class="ti ti-user me-1" aria-hidden="true"></i>Accounts involved
+        </h6>
+        ${users.length
+          ? `<div class="d-flex flex-wrap gap-1">${users.map(u => `<code class="badge bg-secondary fw-normal">${esc(u)}</code>`).join('')}</div>`
+          : '<span class="text-muted small">None identified</span>'}
+      </div>
+      <div class="col-md-6">
+        <h6 class="text-muted text-uppercase mb-2" style="font-size:11px;letter-spacing:.06em">
+          <i class="ti ti-network me-1" aria-hidden="true"></i>Source IPs
+        </h6>
+        ${srcIps.length
+          ? `<div class="d-flex flex-wrap gap-1">${srcIps.map(ip => `<code class="badge bg-secondary fw-normal">${esc(ip)}</code>`).join('')}</div>`
+          : '<span class="text-muted small">None identified</span>'}
+      </div>
+    </div>
+    <h6 class="text-muted text-uppercase mb-2" style="font-size:11px;letter-spacing:.06em">
+      <i class="ti ti-server me-1" aria-hidden="true"></i>Affected assets
+    </h6>
+    ${assets.length ? `
+    <div class="table-scroll">
+      <table class="table table-sm table-hover mb-0">
+        <thead><tr><th>Asset</th><th>Finding</th><th>Type</th></tr></thead>
+        <tbody>${assets.map(a => `
+          <tr>
+            <td class="font-monospace small">${esc(a.label)}</td>
+            <td><span class="badge bg-secondary">${esc(a.fid)}</span></td>
+            <td class="text-muted small">${esc(a.type)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>` : '<span class="text-muted small">None recorded</span>'}
+    ${inc.escalation_note ? `
+    <div class="alert alert-warning d-flex align-items-start gap-2 py-2 mt-3 small">
+      <i class="ti ti-clock flex-shrink-0" aria-hidden="true"></i>
+      <div>${md(inc.escalation_note)}</div>
+    </div>` : ''}
+  `;
+}
+
+// ── Tab: Timeline (ECharts scatter) ──────────────────────────────────────
+function renderTimelineTab(inc) {
+  const tl = inc.timeline || [];
+  const chartEl = $('#tlchart');
+  if (!chartEl) return;
+
+  if (_tlChart) { try { _tlChart.dispose(); } catch(_) {} _tlChart = null; }
+
+  if (!tl.length) {
+    chartEl.innerHTML = '<div class="text-muted small p-3">No timeline events for this incident.</div>';
+    return;
+  }
+
+  const dark = document.documentElement.getAttribute('data-bs-theme') !== 'light';
+  _tlChart = echarts.init(chartEl, dark ? 'dark' : null, { renderer: 'canvas' });
+
+  const files = [...new Set(tl.map(e => e.file))];
+  const PAL   = ['#5aa9ff','#ff9f43','#7bd389','#ff5d5d','#c084fc','#f4d35e','#48cae4','#ffd166','#06d6a0','#ef476f'];
+  // ECharts tooltip uses its own safe rendering; we escape inside formatter
+  const escE  = s => String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  const series = files.map((file, fi) => ({
+    name: file,
+    type: 'scatter',
+    symbolSize: 11,
+    itemStyle: { color: PAL[fi % PAL.length] },
+    data: tl.filter(e => e.file === file).map(e => ({
+      value: [new Date(e.utc).getTime(), fi],
+      cite: e.cite, event: e.event, original: e.original, note: e.note, local: e.local
+    }))
+  }));
+
+  _tlChart.setOption({
+    backgroundColor: 'transparent',
+    textStyle: { fontFamily: 'system-ui,-apple-system,Segoe UI,Roboto,sans-serif', fontSize: 12 },
+    tooltip: {
+      trigger: 'item',
+      confine: true,
+      extraCssText: 'max-width:300px;white-space:normal;line-height:1.5',
+      formatter(p) {
+        const d = p.data;
+        return `<div>
+          <div style="font-family:monospace;font-size:11px;color:#9ca3af">${escE(d.original)}${d.local ? ` <span style="color:#6b7280">(${escE(d.local)})</span>` : ''}</div>
+          <div style="font-weight:600;margin:4px 0;font-size:12px">${escE(d.event)}</div>
+          ${d.note ? `<div style="color:#9ca3af;font-size:11px">${escE(d.note)}</div>` : ''}
+          <div style="font-family:monospace;font-size:10px;color:#5aa9ff;margin-top:4px">${escE(d.cite)}</div>
+        </div>`;
+      }
+    },
+    grid: { left:'10px', right:'10px', top:'10px', bottom:'50px', containLabel:true },
+    xAxis: {
+      type: 'time',
+      axisLabel: {
+        fontSize: 11,
+        formatter: v => new Date(v).toISOString().slice(11,16) + '\nUTC'
+      },
+      splitLine: { lineStyle: { opacity: .25 } }
+    },
+    yAxis: {
+      type: 'category',
+      data: files,
+      axisLabel: {
+        fontSize: 11,
+        width: 155,
+        overflow: 'truncate',
+        formatter: v => v.length > 26 ? v.slice(0, 23) + '…' : v
+      }
+    },
+    dataZoom: [
+      { type:'slider', bottom:4, height:20, fillerColor:'rgba(90,169,255,.2)', borderColor:'#3b82f6' },
+      { type:'inside' }
+    ],
+    series
+  });
+
+  // Resize observer so chart tracks container
+  if (window.ResizeObserver) {
+    const ro = new ResizeObserver(() => _tlChart?.resize());
+    ro.observe(chartEl);
+  }
+
+  // Timeline table
+  const tbody = $('#tl-table tbody');
+  if (tbody) {
+    tbody.innerHTML = tl.map((e, n) => `
+      <tr>
+        <td class="text-muted small">${n+1}</td>
+        <td class="font-monospace small" style="white-space:nowrap">${esc(e.utc ? e.utc.slice(0,19) : '')}</td>
+        <td class="font-monospace small text-muted" style="white-space:nowrap">${esc(e.local||'')}</td>
+        <td class="font-monospace small">${esc(e.original)}</td>
+        <td>${citesHtml([e.cite])}</td>
+        <td class="small">${esc(e.event)}${e.note ? `<div class="text-muted" style="font-size:11px">${esc(e.note)}</div>` : ''}</td>
+      </tr>`).join('');
+  }
+}
+
+// ── Tab: Evidence ─────────────────────────────────────────────────────────
+function renderEvidenceTab(inc) {
+  const all = k => (inc.findings||[]).flatMap(f => f[k]||[]);
+  const unk = all('not_enough_evidence').concat((inc.gaps||[]).map(g => ({text:g, cites:[]})));
+  $('#tab-ev').innerHTML = `
+    <div class="row g-3">
+      <div class="col-md-4 ev-confirmed">
+        <h6 class="d-flex align-items-center gap-1 mb-2">
+          <i class="ti ti-shield-check" aria-hidden="true"></i>Confirmed
+        </h6>
+        ${claimsList(all('confirmed'))}
+      </div>
+      <div class="col-md-4 ev-suspected">
+        <h6 class="d-flex align-items-center gap-1 mb-2">
+          <i class="ti ti-shield-half" aria-hidden="true"></i>Suspected
+        </h6>
+        ${claimsList(all('suspected'))}
+      </div>
+      <div class="col-md-4 ev-nee">
+        <h6 class="d-flex align-items-center gap-1 mb-2">
+          <i class="ti ti-shield-x" aria-hidden="true"></i>Not enough evidence
+        </h6>
+        ${claimsList(unk)}
+      </div>
+    </div>
+  `;
+}
+
+// ── Tab: Severity ─────────────────────────────────────────────────────────
+function renderSeverityTab(inc) {
+  const steps = inc.severity_steps || [];
+  $('#tab-sev').innerHTML = `
+    <div class="d-flex align-items-center gap-3 mb-3">
+      <span class="fw-semibold">Final severity:</span>
+      ${sevBadge(inc.severity)}
+    </div>
+    <ol class="mb-0 small">${steps.map(s => `<li class="mb-2">${md(s)}</li>`).join('')}</ol>
+  `;
+}
+
+// ── Tab: Actions ──────────────────────────────────────────────────────────
+function renderActionsTab(inc) {
+  const actions = inc.actions || [];
+  if (!actions.length) {
+    $('#tab-act').innerHTML = '<span class="text-muted small">No runbook actions applicable.</span>';
+    return;
+  }
+  let html = '';
+  actions.forEach((a, ai) => {
+    if (!a.runbook) {
+      html += `
+        <div class="alert alert-secondary py-2 mb-3 d-flex align-items-start gap-2">
+          <i class="ti ti-info-circle flex-shrink-0" aria-hidden="true"></i>
+          <div class="small"><strong>${esc(a.for)}:</strong> ${esc(a.note)}</div>
+        </div>`;
+      return;
+    }
+    html += `
+      <div class="mb-4">
+        <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
+          <span class="badge bg-primary">${esc(a.id || a.runbook)}</span>
+          <strong class="small">${esc(a.runbook)}</strong>
+          <span class="text-muted small">· for ${esc(a.for)}</span>
+          ${a.file ? citesHtml([a.file]) : ''}
+        </div>
+        <div class="list-group list-group-flush border rounded">`;
+
+    (a.steps||[]).forEach((s, si) => {
+      if (s.step === 'note') {
+        html += `
+          <div class="list-group-item list-group-item-warning py-2 small">
+            <i class="ti ti-info-circle me-1" aria-hidden="true"></i>
+            <em>${esc(s.text)}</em>
+          </div>`;
+        return;
+      }
+      const ck = _checks[`${ai}-${si}`] || false;
+      html += `
+        <div class="list-group-item py-2">
+          <div class="d-flex align-items-start gap-2">
+            <input type="checkbox" class="form-check-input mt-1 step-ck flex-shrink-0"
+                   id="ck-${ai}-${si}" data-key="${ai}-${si}" ${ck ? 'checked' : ''}
+                   aria-label="Mark ${esc(s.step)} as done">
+            <div style="min-width:0;flex:1">
+              <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+                <code class="text-muted" style="font-size:11px">${esc(s.step)}</code>
+                ${condPill(s.condition, s.condition_detail)}
+                ${citesHtml([s.cite])}
+              </div>
+              <div class="small">${esc(s.text)}</div>
+              ${s.applies_to ? `
+                <div class="text-muted mt-1" style="font-size:11px">
+                  <i class="ti ti-arrow-right me-1" aria-hidden="true"></i>${esc(s.applies_to)}
+                </div>` : ''}
+            </div>
+          </div>
+        </div>`;
+    });
+    html += `</div></div>`;
+  });
+
+  $('#tab-act').innerHTML = html;
+
+  // Checkbox state (in memory only, never sent to backend)
+  $$('.step-ck').forEach(cb => {
+    cb.addEventListener('change', e => { _checks[e.target.dataset.key] = e.target.checked; });
+  });
+}
+
+// ── Tab: People ───────────────────────────────────────────────────────────
+function renderPeopleTab(inc) {
+  const rows = inc.escalation || [];
+  if (!rows.length) {
+    $('#tab-ppl').innerHTML = '<span class="text-muted small">No escalation contacts for this severity level.</span>';
+    return;
+  }
+  $('#tab-ppl').innerHTML = `
+    <div class="table-scroll">
+      <table class="table table-sm table-hover mb-0">
+        <thead><tr>
+          <th>Role</th><th>Name for this incident</th>
+          <th>Time limit</th><th>How</th><th>Condition</th><th>Source</th>
+        </tr></thead>
+        <tbody>${rows.map(r => `
+          <tr>
+            <td class="small">${esc(r.who)}</td>
+            <td class="small">${esc(r.resolved||'—')}</td>
+            <td class="small fw-bold">${esc(r.limit)}</td>
+            <td class="small">${esc(r.how)}</td>
+            <td class="small">${r.condition ? `<span class="text-success small">${esc(r.condition)}</span>` : ''}</td>
+            <td>${citesHtml([r.cite])}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    ${inc.escalation_note ? `
+    <div class="alert alert-info d-flex align-items-start gap-2 py-2 mt-2 small">
+      <i class="ti ti-clock flex-shrink-0" aria-hidden="true"></i>
+      <div>${md(inc.escalation_note)}</div>
+    </div>` : ''}
+  `;
+}
+
+// ── Tab: Matching ─────────────────────────────────────────────────────────
+function renderMatchingTab(inc) {
+  const matches = [...new Set((inc.findings||[]).flatMap(f => f.entity_matching||[]))];
+  const related = [...new Set((inc.findings||[]).flatMap(f => f.related_changes||[]))];
+  $('#tab-match').innerHTML = `
+    <div class="row g-3">
+      <div class="col-md-6">
+        <h6 class="text-muted text-uppercase mb-2" style="font-size:11px;letter-spacing:.06em">
+          <i class="ti ti-link me-1" aria-hidden="true"></i>How names were matched across files
+        </h6>
+        ${matches.length
+          ? `<ul class="small mb-0">${matches.map(m => `<li class="mb-1">${md(m)}</li>`).join('')}</ul>`
+          : '<span class="text-muted small">None</span>'}
+      </div>
+      <div class="col-md-6">
+        <h6 class="text-muted text-uppercase mb-2" style="font-size:11px;letter-spacing:.06em">
+          <i class="ti ti-calendar-check me-1" aria-hidden="true"></i>Related changes checked
+        </h6>
+        ${related.length
+          ? `<ul class="small mb-0">${related.map(r => `<li class="mb-1">${md(r)}</li>`).join('')}</ul>`
+          : '<span class="text-muted small">None</span>'}
+      </div>
+    </div>
+  `;
+}
+
+// ── Bottom: Alerts table ──────────────────────────────────────────────────
+function renderAlerts() {
+  const alerts = DATA.alerts || [];
+  $('#cnt-alerts').textContent = alerts.length;
+  $('#tbl-alerts tbody').innerHTML = alerts.map(a => `
+    <tr>
+      <td class="font-monospace small">${esc(a.alert)}</td>
+      <td class="font-monospace small" style="white-space:nowrap">${esc(a.utc ? a.utc.slice(0,19) : '')}</td>
+      <td class="small">${esc(a.description)}</td>
+      <td class="small">${esc(a.outcome)} ${citesHtml([a.cite])}</td>
+    </tr>`).join('');
+}
+
+// ── Bottom: Closed ────────────────────────────────────────────────────────
+function renderClosed() {
+  const closed = DATA.closed_as_harmless || [];
+  $('#cnt-closed').textContent = closed.length;
+  if (!closed.length) { $('#body-closed').innerHTML = '<span class="text-muted small">None.</span>'; return; }
+  $('#body-closed').innerHTML = `<ul class="list-unstyled mb-0">${closed.map(f => {
+    const cc = f.change_check || {};
+    return `<li class="mb-3">
+      <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+        <span class="badge bg-success">${esc(cc.change_id||'?')}</span>
+        <strong class="small">${esc(f.title)}</strong>
+        <span class="text-muted small font-monospace">${esc(f.start_utc ? f.start_utc.slice(0,16) : '')} UTC</span>
+      </div>
+      <ul class="small mb-1">${(cc.reasons||[]).map(r => `<li>${md(r)}</li>`).join('')}
+        <li class="text-muted">Closed as approved activity — not escalated.</li>
+      </ul>
+      ${citesHtml([cc.cite])}
+    </li>`;
+  }).join('')}</ul>`;
+}
+
+// ── Bottom: Missing sources ───────────────────────────────────────────────
+function renderMissing() {
+  const missing = DATA.missing_data || [];
+  $('#cnt-missing').textContent = missing.length;
+  $('#body-missing').innerHTML = missing.length
+    ? `<ul class="list-unstyled mb-0">${missing.map(m =>
+        `<li class="mb-2 small missing-item">${md(m)}</li>`
+      ).join('')}</ul>`
+    : '<span class="text-muted small">No gaps detected.</span>';
+}
+
+// ── Bottom: Files / timestamp table ──────────────────────────────────────
+function renderFiles() {
+  const files = DATA.files || {};
+  $('#tbl-files tbody').innerHTML = Object.entries(files)
+    .filter(([, f]) => f.timezone)
+    .map(([p, f]) => `
+      <tr>
+        <td class="font-monospace small">${esc(p)}</td>
+        <td class="small">${esc(f.kind)}</td>
+        <td class="small">${esc(f.timezone)}${f.tz_assumed ? ' <span class="badge bg-warning text-dark ms-1" title="Timezone not stated in file; assumed">assumed</span>' : ''}</td>
+        <td class="small">${f.events ?? '—'}</td>
+        <td class="small text-muted">${esc(f.logged_at || '')}</td>
+        <td class="small text-muted">${esc((f.notes||[]).join('; '))}</td>
+      </tr>`).join('');
+}
+
+// ── Bottom: Analyst notes ─────────────────────────────────────────────────
+function renderNotes() {
+  const warnings = DATA.warnings || [];
+  $('#cnt-notes').textContent = warnings.length;
+  $('#body-notes').innerHTML = warnings.length
+    ? `<ul class="small mb-0">${warnings.map(w => `<li class="mb-1">${md(w)}</li>`).join('')}</ul>`
+    : '<span class="text-muted small">No analyst notes.</span>';
+}
+
+// ── Chat chips ────────────────────────────────────────────────────────────
+function renderChips() {
+  const html = SUGGESTED_QS.map(q =>
+    `<button type="button" class="chat-chip" role="listitem" data-q="${esc(q)}" title="${esc(q)}">${esc(q)}</button>`
+  ).join('');
+  $('#chips-desk').innerHTML = html;
+  $('#chips-mobile').innerHTML = html;
+
+  document.querySelectorAll('.chat-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const q = chip.dataset.q;
+      if (window.innerWidth >= 1200) {
+        $('#q-desk').value = q;
+        $('#form-desk').requestSubmit();
+      } else {
+        $('#q-mobile').value = q;
+        $('#form-mobile').requestSubmit();
+      }
+    });
+  });
+}
+
+// ── Chat: append message ──────────────────────────────────────────────────
+function appendMsg(containerId, role, innerHTML) {
+  const c = $(containerId);
+  if (!c) return;
+  const div = document.createElement('div');
+  div.className = `chat-msg ${role}`;
+  div.innerHTML = innerHTML;
+  c.appendChild(div);
+  c.scrollTop = c.scrollHeight;
+}
+
+function setTyping(show) {
+  ['#typing-desk','#typing-mobile'].forEach(id => {
+    const el = $(id);
+    if (el) el.style.display = show ? 'block' : 'none';
+  });
+}
+
+/** Render chat API response safely. */
+function renderAnswer(j) {
+  // md() calls esc() first, so API text is always escaped
+  let html = md(j.answer)
+    // Turn [file.ext:Lnn] references into cite chips after markdown conversion
+    .replace(/\[([^\]]+\.[\w]+:L\d+(?:-L\d+)?)\]/g, (_, c) =>
+      `<button type="button" class="cite-chip ms-1" data-cite="${esc(c)}">${esc(c)}</button>`
+    );
+  if (j.flags && j.flags.length) {
+    html += `<div class="msg-flag"><i class="ti ti-alert-triangle me-1" aria-hidden="true"></i>${j.flags.map(esc).join('<br>')}</div>`;
+  }
+  html += `<div class="msg-meta">${esc(j.model || 'deterministic')} · ${(j.citations||[]).length} verified citation(s)</div>`;
+  return html;
+}
+
+async function submitChat(qId, msgsId) {
+  const input = $(qId);
+  const q = input.value.trim();
+  if (!q) return;
+  input.value = '';
+
+  appendMsg(msgsId, 'user', esc(q));
+  setTyping(true);
+
+  try {
+    const r = await fetch('/api/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: q, dataset: DS, history: HIST })
+    });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.detail ? JSON.stringify(j.detail) : r.statusText);
+    setTyping(false);
+    appendMsg(msgsId, 'bot', renderAnswer(j));
+    HIST.push({ role:'user', content:q }, { role:'assistant', content:j.answer });
+    if (HIST.length > 12) HIST = HIST.slice(-12); // keep last 6 pairs
+  } catch (err) {
+    setTyping(false);
+    appendMsg(msgsId, 'bot',
+      `<span class="text-danger"><i class="ti ti-alert-triangle me-1" aria-hidden="true"></i>Error: ${esc(err.message)}</span>`
+    );
+  }
+}
+
+$('#form-desk').addEventListener('submit', e => {
+  e.preventDefault();
+  submitChat('#q-desk', '#msgs-desk');
+});
+$('#form-mobile').addEventListener('submit', e => {
+  e.preventDefault();
+  submitChat('#q-mobile', '#msgs-mobile');
+});
+
+// ── Upload ────────────────────────────────────────────────────────────────
+$('#file-upload').addEventListener('change', e => {
+  const files = e.target.files;
+  if (!files.length) return;
+  const fd = new FormData();
+  for (const f of files) fd.append('files', f, f.webkitRelativePath || f.name);
+  setStatus('Uploading…');
+  loadAnalysis('/api/upload', { method:'POST', body:fd });
+  e.target.value = '';
+});
+
+// ── Buttons ───────────────────────────────────────────────────────────────
+$('#btn-sample').addEventListener('click', () => loadAnalysis('/api/analyze?refresh=true'));
+$('#btn-retry').addEventListener('click', () => loadAnalysis('/api/analyze'));
+
+// ── Window resize -> chart ────────────────────────────────────────────────
+window.addEventListener('resize', () => { _tlChart?.resize(); });
+
+// ── Escape closes offcanvas ───────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    const oc = bootstrap.Offcanvas.getInstance($('#chat-offcanvas'));
+    if (oc) oc.hide();
+  }
+});
+
+// ── Boot ──────────────────────────────────────────────────────────────────
+initTheme();
+loadHealth();
+loadAnalysis('/api/analyze');
+</script>
+</body>
+</html>
